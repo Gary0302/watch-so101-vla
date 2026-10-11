@@ -1,0 +1,32 @@
+# Copy to ~/gary/so101.toml on aup and fill in. Every number here must come from a probe or
+# a measurement on the real arm, never from this example (SPEC §9, §13).
+
+control_hz = 30.0
+require_both_cameras = true
+
+[robot]
+port = "/dev/ttyACM0"
+# A *copy* of the owner's LeRobot calibration (never edit theirs):
+#   cp ~/.cache/huggingface/lerobot/calibration/robots/so_follower/<id>.json ~/gary/so101_calibration.json
+calibration_path = "/work/so101_calibration.json"
+expect_torque_off_at_start = true
+
+[safety]
+max_step_per_tick = 2.0
+near_margin = 5.0
+
+[safety.soft_limits]   # degrees, measured with the arm moved by hand, torque off; gripper 0..100
+shoulder_pan = [-60.0, 60.0]
+shoulder_lift = [-60.0, 60.0]
+elbow_flex = [-60.0, 60.0]
+wrist_flex = [-60.0, 60.0]
+wrist_roll = [-90.0, 90.0]
+gripper = [5.0, 95.0]
+
+[gripper]              # from feetech_telemetry_probe.py: empty close vs. closing on an object
+endstop_position = 2.0
+baseline_current = 50.0
+current_delta_min = 100.0
+
+[motion]
+vmax_deg_s = 20.0

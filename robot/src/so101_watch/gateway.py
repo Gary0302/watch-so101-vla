@@ -178,12 +178,12 @@ def main() -> None:
     ap.add_argument("--key", help="TLS private key (PEM)")
     ap.add_argument("--allow-insecure", action="store_true",
                     help="plain ws:// for LAN development only (SPEC §11.2 requires WSS)")
-    ap.add_argument("--mock", action="store_true", help="use MockRobot (required until robot_worker exists)")
+    robot = ap.add_mutually_exclusive_group(required=True)
+    robot.add_argument("--mock", action="store_true", help="MockRobot + scripted policy (no hardware)")
+    robot.add_argument("--config", help="TOML config for the real SO-101 (see config/so101.example.toml)")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-    if not args.mock:
-        raise SystemExit("real SO-101 robot_worker is not implemented yet; run with --mock")
     if bool(args.cert) != bool(args.key):
         raise SystemExit("--cert and --key go together")
     if not args.cert and not args.allow_insecure:
@@ -194,18 +194,37 @@ def main() -> None:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(args.cert, args.key)
 
-    from .mocks import MockRobot, ScriptedPolicy
-
+    token = _load_token(args)
     outbox = Outbox()
-    agent = RobotAgent(MockRobot(), ScriptedPolicy(), outbox)
-    gateway = Gateway(agent, outbox, _load_token(args))
+    if args.mock:
+        from .mocks import MockRobot, ScriptedPolicy
+
+        robot, agent = None, RobotAgent(MockRobot(), ScriptedPolicy(), outbox)
+    else:
+        from .config import load_config
+        from .robot_worker import SO101Robot
+        from .vla_client import NoPolicy
+
+        agent_cfg, robot_cfg = load_config(args.config)
+        robot = SO101Robot(robot_cfg)
+        agent = RobotAgent(robot, NoPolicy(), outbox, agent_cfg)
+    gateway = Gateway(agent, outbox, token)
 
     async def run() -> None:
-        await gateway.start(args.host, args.port, ctx)
+        server = await gateway.start(args.host, args.port, ctx)
         log.info("gateway listening on %s://%s:%d", "wss" if ctx else "ws", args.host, args.port)
-        await asyncio.Future()
+        try:
+            await asyncio.Future()
+        finally:
+            await gateway.stop(server)
 
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if robot is not None:
+            robot.close()  # disconnect(disable_torque=False): the arm keeps holding
 
 
 if __name__ == "__main__":

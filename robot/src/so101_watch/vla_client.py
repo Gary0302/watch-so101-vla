@@ -51,3 +51,13 @@ class PolicyBuffer:
 
     def __len__(self) -> int:
         return len(self._queue)
+
+
+class NoPolicy:
+    """Until the friend's VLA is wired in: never ready, so every task is rejected (fails closed)."""
+
+    def ready(self, task_id: str) -> bool:
+        return False
+
+    def infer(self, obs: Any, task_id: str, epoch: int) -> PolicyResult:
+        return PolicyResult(epoch, [], done=True)
