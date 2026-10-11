@@ -1,6 +1,6 @@
 # watch-so101-vla
 
-Apple Watch × SO-101 × VLA。規格見 [docs/SPEC.md](docs/SPEC.md)（v1.2）。
+Apple Watch × SO-101 × VLA。第一次看這個專案請從 [docs/INTRODUCTION.md](docs/INTRODUCTION.md) 開始；工程規格見 [docs/SPEC.md](docs/SPEC.md)（v1.2）。
 
 ## 目前進度
 
