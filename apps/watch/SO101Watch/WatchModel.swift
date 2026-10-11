@@ -17,7 +17,7 @@ final class WatchModel: ObservableObject {
     private let link = WatchLink()
     private let motion = MotionStreamer()
     private let recorder = WatchClipRecorder()
-    private let keeper = RuntimeKeeper()
+    private lazy var keeper = RuntimeKeeper(trace: link.trace)
     private var timer: Timer?
     private var started = false
 
