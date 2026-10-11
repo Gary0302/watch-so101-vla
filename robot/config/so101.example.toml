@@ -7,7 +7,7 @@ require_both_cameras = true
 [robot]
 port = "/dev/ttyACM0"
 # A *copy* of the owner's LeRobot calibration (never edit theirs):
-#   cp ~/.cache/huggingface/lerobot/calibration/robots/so_follower/<id>.json ~/gary/so101_calibration.json
+#   cp ~/.cache/huggingface/lerobot/calibration/robots/so_follower/<id>.json ~/gary/so101_calibration.json  # so101_follower/ on older lerobot
 calibration_path = "/work/so101_calibration.json"
 expect_torque_off_at_start = true
 

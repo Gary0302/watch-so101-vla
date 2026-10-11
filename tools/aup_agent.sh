@@ -6,7 +6,7 @@
 # the arm keeps holding (disconnect(disable_torque=False)).
 #
 # One-time, in ~/gary on aup:
-#   cp ~/.cache/huggingface/lerobot/calibration/robots/so_follower/<id>.json ~/gary/so101_calibration.json
+#   cp ~/.cache/huggingface/lerobot/calibration/robots/so_follower/<id>.json ~/gary/so101_calibration.json  # so101_follower/ on older lerobot
 #   cp watch-so101-vla/robot/config/so101.example.toml ~/gary/so101.toml   # then edit with measured values
 #   watch-so101-vla/tools/make_cert.sh ~/gary/certs 169.233.72.12          # prints the pin for the iPhone app
 #   (umask 077; head -c 24 /dev/urandom | base64 > ~/gary/so101_token)

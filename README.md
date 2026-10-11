@@ -4,7 +4,10 @@ Apple Watch × SO-101 × VLA。規格見 [docs/SPEC.md](docs/SPEC.md)（v1.2）�
 
 ## 目前進度
 
-- `robot/`：Local Robot Agent 骨架，不需要硬體。內容有 protocol、Supervisor FSM、Safety Gate、Haptic policy、gripper 接觸推估、TaskRouter 和 policy buffer，以及 `MockRobot`。
+- `robot/`：Local Robot Agent。內容有 protocol、Supervisor FSM、Safety Gate、Haptic policy、gripper 接觸推估、TaskRouter 和 policy buffer，以及 `MockRobot`。
+  - `robot_worker.py`：真正的 SO-101，直接用 LeRobot `FeetechMotorsBus`。它不寫 calibration 或設定暫存器；開 torque 前先設 goal = present；斷線時一律用 `disable_torque=False`；bus 出錯會 latch 成 FAULT，要重啟 agent 才能恢復。用假 bus 測過，也對真 lerobot 0.6.1 的 API 驗證過，**還沒在手臂上跑過**。
+  - `config.py` + `config/so101.example.toml`：TOML 設定，打錯的 key 會直接報錯。範例裡的數值都是佔位，必須換成實測值。
+  - gateway：`--mock` 或 `--config so101.toml`（真手臂）。真手臂模式目前用 `NoPolicy`，VLA 一律拒絕；因為還沒有 camera_worker，相機也會回報缺失。
 - `apps/shared`（Swift Package）：
   - `SO101Protocol`：與 Python 共用的訊息定義，用 fixture 做格式對照測試。
   - `SO101Voice`：語音流程。Watch 收到 `LISTENING` 狀態後用 `AVAudioRecorder` 錄 5 秒 AAC，音檔分塊經 WCSession 傳給 iPhone 重組，iPhone 用 `SFSpeechRecognizer`（zh-TW，可在裝置上辨識）轉成文字，再送出 `voice.transcript`。文字代表什麼任務，由 agent 的 TaskRouter 判斷。
@@ -43,4 +46,13 @@ TC01–TC12 在 `robot/tests/test_acceptance.py`；FSM 與隨機事件不變量�
 
 - `PlaceholderJointMapper` 是 IK 的佔位，要換成 LeRobot 的 `EEReferenceAndDelta` + `InverseKinematicsEEToJoints`。
 - `SafetyConfig.soft_limits` 與 `GripperConfig` 的門檻都是 Mock 用的假值。
-- 還沒有 gateway（WSS）、`robot_worker`（真 SO-101）、`camera_worker`、`recorder`，也還沒接 async policy client。
+- 還沒有 `camera_worker` 和 `recorder`，也還沒接朋友的 VLA（`vla_client`，要等 /home/ruhai 有讀取權限）。
+- Gripper 電流門檻（`Present_Current` raw 單位）要用 `tools/feetech_telemetry_probe.py` 實測。
+- control loop 在 asyncio 裡同步讀 serial，每個 tick 會卡住網路幾毫秒，要等 probe 量完 Hz 再決定是否改成獨立 thread。
+
+## 在 aup 上跑（等手臂和相機確定沒人用時）
+
+```sh
+tools/make_cert.sh ~/gary/certs 169.233.72.12   # 印出 pin，貼到 iPhone App
+tools/aup_agent.sh /dev/ttyACM0                 # 先在 host 檢查 port 有沒有人用，再起 gary-agent-* container
+```
