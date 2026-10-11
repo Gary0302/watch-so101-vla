@@ -5,53 +5,57 @@ struct WatchRootView: View {
     @EnvironmentObject var model: WatchModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                HStack {
-                    Circle().fill(linkColor).frame(width: 8, height: 8)
-                    Text(model.ui.mode.rawValue).font(.caption2.monospaced()).accessibilityIdentifier("mode")
-                    Spacer()
-                    Text("e\(model.ui.epoch)").font(.caption2.monospaced()).foregroundStyle(.secondary)
-                    if model.recording { Image(systemName: "mic.fill").foregroundStyle(.red) }
-                }
-                // Visible button that is also the Double Tap target (SPEC §5.1).
-                Button(action: model.primaryAction) {
-                    Text(model.ui.pending ? "…" : model.ui.primaryLabel)
-                        .font(.headline).multilineTextAlignment(.center).frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                // Never .disabled: a disabled button swallows Double Tap silently. The model
-                // ignores it instead and buzzes "retry" so you can feel it registered.
-                .opacity(model.ui.primaryEnabled ? 1 : 0.45)
-                .handGestureShortcut(.primaryAction)
-                .accessibilityIdentifier("primary")
+        // Controls are pinned; only the debug trail scrolls. watchOS fires Double Tap only for a
+        // button that is on screen, so scrolling the whole page to read the trail killed it.
+        VStack(spacing: 6) {
+            HStack {
+                Circle().fill(linkColor).frame(width: 8, height: 8)
+                Text(model.ui.mode.rawValue).font(.caption2.monospaced()).accessibilityIdentifier("mode")
+                Spacer()
+                Text("e\(model.ui.epoch)").font(.caption2.monospaced()).foregroundStyle(.secondary)
+                if model.recording { Image(systemName: "mic.fill").foregroundStyle(.red) }
+            }
+            // Visible button that is also the Double Tap target (SPEC §5.1).
+            Button(action: model.primaryAction) {
+                Text(model.ui.pending ? "…" : model.ui.primaryLabel)
+                    .font(.headline).multilineTextAlignment(.center).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            // Never .disabled: a disabled button swallows Double Tap silently. The model
+            // ignores it instead and buzzes "retry" so you can feel it registered.
+            .opacity(model.ui.primaryEnabled ? 1 : 0.45)
+            .handGestureShortcut(.primaryAction)
+            .accessibilityIdentifier("primary")
 
-                Button(action: model.stop) {
-                    Text("STOP").font(.headline.bold()).frame(maxWidth: .infinity)
-                }
-                .tint(.red)
-                .accessibilityIdentifier("stop")
-                .opacity(model.ui.phoneLinked ? 1 : 0.45)
+            Button(action: model.stop) {
+                Text("STOP").font(.headline.bold()).frame(maxWidth: .infinity)
+            }
+            .tint(.red)
+            .accessibilityIdentifier("stop")
+            .opacity(model.ui.phoneLinked ? 1 : 0.45)
 
-                if let n = model.ui.notice {
-                    Text(n).font(.caption2).foregroundStyle(.orange).lineLimit(2)
-                } else if let h = model.ui.lastHaptic {
-                    Text(h).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                }
+            if let n = model.ui.notice {
+                Text(n).font(.caption2).foregroundStyle(.orange).lineLimit(2)
+            } else if let h = model.ui.lastHaptic {
+                Text(h).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
 
-                // Debug trail (scroll down with the Digital Crown). Newest first.
-                Divider().padding(.top, 8)
-                Text("phone \(model.ui.phoneLinked ? "ok" : "—") · agent \(model.ui.agentLinked ? "ok" : "—")")
-                    .font(.system(size: 10).monospaced()).foregroundStyle(.secondary)
-                ForEach(Array(model.debugLines.prefix(30).enumerated()), id: \.offset) { _, line in
-                    Text(line)
-                        .font(.system(size: 9).monospaced())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundStyle(line.contains("FAIL") || line.contains("dropped") ? .orange : .secondary)
+            // Debug trail (scroll with the Digital Crown). Newest first.
+            ScrollView {
+                VStack(spacing: 2) {
+                    Text("phone \(model.ui.phoneLinked ? "ok" : "—") · agent \(model.ui.agentLinked ? "ok" : "—")")
+                        .font(.system(size: 10).monospaced()).foregroundStyle(.secondary)
+                    ForEach(Array(model.debugLines.prefix(30).enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.system(size: 9).monospaced())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .foregroundStyle(line.contains("FAIL") || line.contains("dropped") ? .orange : .secondary)
+                    }
                 }
             }
-            .padding(.horizontal, 4)
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
         }
+        .padding(.horizontal, 4)
     }
 
     private var linkColor: Color {
