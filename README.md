@@ -42,6 +42,24 @@ cd apps && xcodebuild -project SO101.xcodeproj -scheme SO101Watch -destination i
 
 TC01–TC12 在 `robot/tests/test_acceptance.py`；FSM 與隨機事件不變量測試在 `test_fsm.py`、`test_owner_epoch.py`。
 
+## 實機測試（Mac mini + iPhone + Series 11）
+
+- Mac mini：macOS 27.0.1、Xcode 27.1 RC、Team `98527N34D6`（寫在 `project.yml`）。Repo 在 `~/code/VLA/main/watch-so101-vla`。
+- **安裝**：在 Mac mini 的 Xcode 選 `SO101Relay` → iPhone，按 ⌘R。手錶 App 透過 iPhone 的 Watch App 安裝或更新（「可安裝的 App」）。ResWiFi 會隔離裝置、擋掉 Bonjour，所以 Xcode 沒辦法直接連手錶。
+- **透過 SSH 簽章會失敗**（`errSecInternalComponent`），因為 SSH session 裡登入鑰匙圈是鎖住的。可以在 GUI 按 ⌘R，或改建一個專用的建置鑰匙圈。
+- **測試用 gateway**：在 Mac mini 上跑 `wss://100.64.8.15:8765`（mock，不碰硬體）。token、憑證和 log 都在 `~/so101-mock/`。
+- **除錯畫面**：手錶往下轉數位錶冠，iPhone 在最下方的「Debug」。`TX` 是送出，`RX` 是收到，失敗或被丟掉的顯示成橘色。gateway 的 log 會記錄每一筆收到的指令和送出的回覆，手腕資料則整理成每秒幾筆。
+- **震動**：每次點按或 Double Tap 一定會震。`click` 代表有送出，`retry`（連震兩下）代表被忽略，原因寫在除錯畫面。按鈕永遠不會被停用，因為停用的按鈕會讓系統直接吞掉 Double Tap。
+
+### 實測後跟 SPEC 不同的地方（要回寫 SPEC）
+
+| 項目 | SPEC | 現在 | 原因 |
+|---|---|---|---|
+| 手腕資料逾時 | 250 ms 就回 HOLD | 250 ms 先原地停住，1.5 s 才離開 MANUAL 或停 VLA | 實機上 WCSession 偶爾會卡 300 到 600 ms，每卡一次就要重新校準，沒辦法用 |
+| LISTENING 逾時 | 8 s | 15 s | 錄音 5 s，加上傳到 iPhone 和語音轉文字，實測要 8.2 s |
+| 手錶 inactive | scenePhase 不是 active 就算 | 只有進入背景才算 | 手腕放下時，Always On 也會讓 App 變成 inactive，但 App 其實還在最前面 |
+| 背景執行 | 沒有規定 | `HKWorkoutSession`（不存任何資料） | extended runtime session 不會讓 App 維持 reachable（Apple 論壇 thread 723158） |
+
 ## 尚未可上實機
 
 - `PlaceholderJointMapper` 是 IK 的佔位，要換成 LeRobot 的 `EEReferenceAndDelta` + `InverseKinematicsEEToJoints`。
