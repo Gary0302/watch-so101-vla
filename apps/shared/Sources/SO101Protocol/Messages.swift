@@ -152,6 +152,25 @@ public struct HapticEvent: TypedMessage, Equatable {
     public var limitType: String?
     public var transactionId: Int?
     public var evidence: [String]
+
+    public init(eventId: String, sessionId: String, controlEpoch: Int, kind: HapticKind, severity: String,
+                confidence: Double, ttlMs: Int, display: String, createdMonoNs: Int64, playHaptic: Bool,
+                axis: String?, limitType: String?, transactionId: Int?, evidence: [String]) {
+        self.eventId = eventId
+        self.sessionId = sessionId
+        self.controlEpoch = controlEpoch
+        self.kind = kind
+        self.severity = severity
+        self.confidence = confidence
+        self.ttlMs = ttlMs
+        self.display = display
+        self.createdMonoNs = createdMonoNs
+        self.playHaptic = playHaptic
+        self.axis = axis
+        self.limitType = limitType
+        self.transactionId = transactionId
+        self.evidence = evidence
+    }
 }
 
 public struct RobotStatus: TypedMessage, Equatable {
@@ -163,6 +182,17 @@ public struct RobotStatus: TypedMessage, Equatable {
     public var reason: String
     public var robotHolding: Bool
     public var vlaTaskId: String?
+
+    public init(sessionId: String, controlEpoch: Int, mode: Mode, owner: Owner, reason: String,
+                robotHolding: Bool, vlaTaskId: String?) {
+        self.sessionId = sessionId
+        self.controlEpoch = controlEpoch
+        self.mode = mode
+        self.owner = owner
+        self.reason = reason
+        self.robotHolding = robotHolding
+        self.vlaTaskId = vlaTaskId
+    }
 }
 
 public struct ControlAck: TypedMessage, Equatable {
@@ -173,11 +203,23 @@ public struct ControlAck: TypedMessage, Equatable {
     public var reason: String
     public var mode: Mode
     public var controlEpoch: Int
+
+    public init(requestId: String, result: Result, reason: String, mode: Mode, controlEpoch: Int) {
+        self.requestId = requestId
+        self.result = result
+        self.reason = reason
+        self.mode = mode
+        self.controlEpoch = controlEpoch
+    }
 }
 
 public struct ErrorMessage: TypedMessage, Equatable {
     public static let messageType = "error"
     public var reason: String
+
+    public init(reason: String) {
+        self.reason = reason
+    }
 }
 
 public enum FromAgent: Equatable, Sendable {
@@ -193,6 +235,7 @@ public enum FromAgent: Equatable, Sendable {
 public enum ProtocolError: Error, Equatable {
     case unsupportedVersion(Int)
     case notAnObject
+    case wrongType(String)
 }
 
 public enum ProtocolCoder {
@@ -222,6 +265,25 @@ public enum ProtocolCoder {
         object["protocol_version"] = protocolVersion
         object["type"] = T.messageType
         return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    /// The envelope's `type` tag, or nil if this is not a v1 message.
+    public static func messageType(of data: Data) -> String? {
+        guard let env = try? decoder().decode(Envelope.self, from: data), env.protocolVersion == protocolVersion else {
+            return nil
+        }
+        return env.type
+    }
+
+    /// Decode one specific message type, checking the envelope's version and type tag.
+    public static func decode<T: TypedMessage>(_ type: T.Type, from data: Data) throws -> T {
+        let d = decoder()
+        let env = try d.decode(Envelope.self, from: data)
+        guard env.protocolVersion == protocolVersion else {
+            throw ProtocolError.unsupportedVersion(env.protocolVersion)
+        }
+        guard env.type == T.messageType else { throw ProtocolError.wrongType(env.type) }
+        return try d.decode(T.self, from: data)
     }
 
     public static func decodeFromAgent(_ data: Data) throws -> FromAgent {
