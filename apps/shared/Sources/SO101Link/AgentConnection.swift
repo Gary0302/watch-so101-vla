@@ -219,7 +219,9 @@ public final class AgentConnection: NSObject, @unchecked Sendable {
     private func report(_ error: Error, response: URLResponse?) {
         let e = error as NSError
         var text = "\(e.domain) \(e.code): \(e.localizedDescription)"
-        if let http = response as? HTTPURLResponse { text = "HTTP \(http.statusCode) (token?) · " + text }
+        if let http = response as? HTTPURLResponse, http.statusCode != 101 {  // 101 = upgraded fine, dropped later
+            text = "HTTP \(http.statusCode) (token?) · " + text
+        }
         if e.code == NSURLErrorCancelled, config.pinnedCertSHA256 != nil { text += " (cert pin mismatch?)" }
         if e.code == NSURLErrorTimedOut || e.code == NSURLErrorCannotConnectToHost {
             text += " (Local Network permission / same Wi-Fi?)"
