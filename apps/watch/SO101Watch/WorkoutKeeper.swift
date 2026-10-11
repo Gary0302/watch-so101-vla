@@ -47,6 +47,9 @@ final class WorkoutKeeper: NSObject, HKWorkoutSessionDelegate {
         }
     }
 
+    /// True while the workout keeps us running: then wrist-down / background is not "left the app".
+    var isRunning: Bool { session?.state == .running }
+
     func stop() {
         session?.end()
         session = nil

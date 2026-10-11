@@ -57,7 +57,7 @@ TC01–TC12 在 `robot/tests/test_acceptance.py`；FSM 與隨機事件不變量�
 |---|---|---|---|
 | 手腕資料逾時 | 250 ms 就回 HOLD | 250 ms 先原地停住，1.5 s 才離開 MANUAL 或停 VLA | 實機上 WCSession 偶爾會卡 300 到 600 ms，每卡一次就要重新校準，沒辦法用 |
 | LISTENING 逾時 | 8 s | 15 s | 錄音 5 s，加上傳到 iPhone 和語音轉文字，實測要 8.2 s |
-| 手錶 inactive | scenePhase 不是 active 就算 | 只有進入背景才算 | 手腕放下時，Always On 也會讓 App 變成 inactive，但 App 其實還在最前面 |
+| 手錶 inactive | scenePhase 不是 active 就算 | workout 在跑時都不算；沒有 workout 時，進入背景才算 | 手腕放下時 App 會變 inactive，甚至進入背景，但 workout 讓它照樣在跑、繼續送資料。資料一斷，agent 照樣會停住並回 HOLD |
 | 背景執行 | 沒有規定 | `HKWorkoutSession`（不存任何資料） | extended runtime session 不會讓 App 維持 reachable（Apple 論壇 thread 723158） |
 
 ## 尚未可上實機

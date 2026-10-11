@@ -82,11 +82,16 @@ final class WatchModel: ObservableObject {
     }
     func lifecycle(active: Bool, foreground: Bool) {
         if foreground, started { Task { await keeper.ensure() } }  // sessions start from the foreground only
-        if !active { keeper.stop() }  // left the app: no reason to keep a workout running
-        link.trace.add("app \(foreground ? "foreground" : active ? "dimmed (Always On)" : "BACKGROUND")")
-        guard active != reportedActive else { return }
-        reportedActive = active
-        apply(controller.onLifecycle(active: active))
+        // Wrist down can drop us to .background even with the workout running. Never end the
+        // workout here (that was the dim-screen disconnect) and don't report "inactive" while it
+        // runs: motion keeps streaming, and if it ever stops the agent freezes/holds on its own.
+        let running = keeper.isRunning
+        let effective = active || running
+        link.trace.add("app \(foreground ? "foreground" : active ? "dimmed (Always On)" : "BACKGROUND")"
+                       + (running ? " · workout on" : " · workout OFF"))
+        guard effective != reportedActive else { return }
+        reportedActive = effective
+        apply(controller.onLifecycle(active: effective))
     }
 
     private func run(_ body: (WatchController, TimeInterval) -> [WatchEffect]) {
