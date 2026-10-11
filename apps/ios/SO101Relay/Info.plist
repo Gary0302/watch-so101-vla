@@ -24,8 +24,6 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
 	</dict>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. No health data is read.</string>

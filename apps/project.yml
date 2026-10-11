@@ -43,10 +43,10 @@ targets:
         NSHealthUpdateUsageDescription: Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. The workout is not saved.
         # ATS rejects a self-signed cert on a public IP (the aup agent) even when our pin matches
         # (NSURLErrorDomain -1200), and NSExceptionDomains can't name an IP. AgentConnection pins
-        # the leaf SHA-256 itself, so lifting ATS doesn't lift verification.
+        # the leaf SHA-256 itself, so lifting ATS doesn't lift verification. No
+        # NSAllowsLocalNetworking here: when it is present iOS ignores NSAllowsArbitraryLoads.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
-          NSAllowsLocalNetworking: true
     dependencies:
       - target: SO101Watch
       - package: SO101Shared

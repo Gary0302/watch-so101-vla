@@ -31,27 +31,38 @@ if holders=$(lsof -t "$PORT_DEV" 2>/dev/null) && [ -n "$holders" ]; then
   exit 3
 fi
 
+# lsof as aup can't see root-owned holders; also refuse if a running container maps the port.
+real=$(readlink -f "$PORT_DEV")
+for c in $(docker ps -q); do
+  for m in $(docker inspect "$c" --format '{{range .HostConfig.Devices}}{{.PathOnHost}} {{end}}'); do
+    [ "$(readlink -f "$m")" = "$real" ] && { echo "REFUSING: $PORT_DEV is mapped into $(docker inspect "$c" --format '{{.Name}}')" >&2; exit 3; }
+  done
+done
+
+# The image has no ensurepip (no venv): plain --target dir on PYTHONPATH.
 setup='
-VENV=/work/venvs/agent
-if [ ! -x $VENV/bin/python ]; then
-  python -m venv --system-site-packages $VENV
-  $VENV/bin/pip install -q --no-deps lerobot==0.6.1 feetech-servo-sdk pyserial deepdiff tqdm \
-    huggingface_hub draccus mergedeep typing_inspect mypy_extensions typing_extensions \
-    orderly_set cachebox
-  $VENV/bin/pip install -q "websockets>=17.2"
+DEPS=/work/venvs/agent-site
+if [ ! -d $DEPS/lerobot ] || [ ! -d $DEPS/websockets ]; then
+  python3 -m pip install -q --no-deps --break-system-packages --target $DEPS lerobot==0.6.1 feetech-servo-sdk \
+    pyserial deepdiff tqdm huggingface_hub draccus mergedeep typing_inspect mypy_extensions \
+    typing_extensions orderly_set cachebox "websockets>=17.2"
 fi
 '
 
 # Inside the container lsof cannot see host processes, so tell the in-process guard which
 # device was already checked here; robot.port in so101.toml must be that same path.
-docker run --rm --init \
+# SO101_DETACH=1: run in the background (docker logs -f gary-agent-*, docker stop to end).
+run_mode=(--rm)
+[ "${SO101_DETACH:-0}" = 1 ] && run_mode=(-d)
+docker run "${run_mode[@]}" --init \
   --name "gary-agent-$STAMP" \
   --device="$PORT_DEV" --group-add dialout \
   -p "$LISTEN:$LISTEN" \
   -v "$GARY:/work" -w "$REPO_IN_CONTAINER/robot" \
-  -e PYTHONPATH="$REPO_IN_CONTAINER/robot/src" \
+  -e PYTHONPATH="/work/venvs/agent-site:$REPO_IN_CONTAINER/robot/src" \
   -e SO101_PORT_CHECKED_ON_HOST="$PORT_DEV" \
   "$IMAGE" \
-  bash -c "$setup; exec /work/venvs/agent/bin/python -m so101_watch.gateway \
+  bash -c "$setup
+exec python3 -u -m so101_watch.gateway \
     --config /work/so101.toml --token-file /work/so101_token \
     --cert /work/certs/cert.pem --key /work/certs/key.pem --port $LISTEN"

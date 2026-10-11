@@ -157,6 +157,7 @@ class SO101Robot:
         bus.connect(handshake=True)
         try:
             self._check_setup(bus)
+            self._check_inside_servo_limits(bus)
             present = bus.sync_read("Present_Position")
             bus.sync_write("Goal_Position", present)  # torque-on must not move anything
             bus.enable_torque(num_retry=2)
@@ -182,6 +183,18 @@ class SO101Robot:
             on = [m for m, v in torque.items() if v]
             if on:
                 raise RobotSetupError(f"torque already on for {on}: someone may be using the arm")
+
+    def _check_inside_servo_limits(self, bus: Any, tolerance: int = 20) -> None:
+        """A joint resting past its Min/Max_Position_Limit (torque off, gravity) would jump to the
+        limit the moment torque comes on, because the servo clamps Goal = Present. Refuse instead."""
+        raw = bus.sync_read("Present_Position", normalize=False)
+        lo = bus.sync_read("Min_Position_Limit", normalize=False)
+        hi = bus.sync_read("Max_Position_Limit", normalize=False)
+        bad = {m: (raw[m], lo[m], hi[m]) for m in raw if not lo[m] - tolerance <= raw[m] <= hi[m] + tolerance}
+        if bad:
+            detail = ", ".join(f"{m} at {p} (limit {a}..{b})" for m, (p, a, b) in bad.items())
+            raise RobotSetupError(f"joints rest outside their servo limits: {detail}. "
+                                  "Move them by hand into range, then start again.")
 
     def read(self) -> Observation:
         assert self._last_pos is not None, "read before connect"

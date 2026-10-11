@@ -18,6 +18,8 @@ class FakeBus:
         self.torque = {j: int(torque_on) for j in JOINTS}
         self.fail_reads = False
         self.fail_writes = False
+        self.raw = {j: 2000 for j in JOINTS}
+        self.limits = ({j: 1000 for j in JOINTS}, {j: 3000 for j in JOINTS})
 
     def connect(self, handshake=True):
         self.calls.append(("connect",))
@@ -30,7 +32,11 @@ class FakeBus:
         if self.fail_reads:
             raise ConnectionError("no status packet")
         if reg == "Present_Position":
-            return dict(self.pos)
+            return dict(self.raw) if not normalize else dict(self.pos)
+        if reg == "Min_Position_Limit":
+            return dict(self.limits[0])
+        if reg == "Max_Position_Limit":
+            return dict(self.limits[1])
         if reg == "Present_Current":
             return {"gripper": 12}
         if reg == "Operating_Mode":
@@ -159,3 +165,15 @@ def test_host_checked_port_skips_only_that_device(monkeypatch):
     robot_worker.assert_port_free("/dev/ttyACM0")
     with pytest.raises(DeviceBusy):
         robot_worker.assert_port_free("/dev/ttyACM1")
+
+
+def test_refuses_torque_on_when_a_joint_rests_past_its_servo_limit():
+    bus = FakeBus()
+    bus.raw["wrist_flex"] = 3140  # max 3000: torque-on would snap it to the limit
+    robot = SO101Robot(RobotConfig(port="/dev/fake", calibration_path="cal.json"),
+                       bus_factory=lambda port, cal: bus, calibration_loader=lambda p: {},
+                       port_guard=lambda p: None)
+    with pytest.raises(RobotSetupError, match="wrist_flex"):
+        robot.connect()
+    assert not any(c[0] in ("write", "enable_torque") for c in bus.calls)
+    assert ("disconnect", False) in bus.calls
