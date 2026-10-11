@@ -163,8 +163,8 @@ class Gateway:
             ssl=ssl_context,
             process_request=self._process_request,
             max_size=MAX_MESSAGE_BYTES,
-            ping_interval=1.0,
-            ping_timeout=3.0,  # Wi-Fi hiccups; stale wrist motion (250 ms) already holds the arm
+            ping_interval=2.0,
+            ping_timeout=10.0,  # guest Wi-Fi spikes to 300+ ms; stale wrist motion already freezes/holds the arm
         )
         self._loop_task = asyncio.create_task(self._control_loop())
         return server
