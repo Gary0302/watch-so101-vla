@@ -104,12 +104,13 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
     }
 
     private func toWatch(_ frame: LinkFrame, quiet: Bool = false) {
-        guard session.activationState == .activated, session.isReachable else {
-            if !quiet { trace.add("→watch dropped (unreachable): \(frame.summary)") }
+        // Try even when isReachable reads false (wrist down + workout); a real failure is reported.
+        guard session.activationState == .activated else {
+            if !quiet { trace.add("→watch dropped (session not active): \(frame.summary)") }
             return
         }
         session.sendMessageData(frame.encoded(), replyHandler: nil) { [weak self] error in
-            self?.trace.add("→watch FAIL \(frame.summary): \(error.localizedDescription)")
+            if !quiet { self?.trace.add("→watch FAIL \(frame.summary): \(error.localizedDescription)") }
         }
     }
 

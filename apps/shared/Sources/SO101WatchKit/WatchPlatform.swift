@@ -77,12 +77,14 @@ public final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
         if case .agent(let d) = frame, ProtocolCoder.messageType(of: d) == WatchMotion.messageType {
             return sendMotion(frame)
         }
-        guard session.activationState == .activated, session.isReachable else {
-            trace.add("TX dropped (phone unreachable): \(frame.summary)")
+        // Don't gate on isReachable: it can read false with the wrist down during a workout while
+        // sendMessage still gets through. Try anyway; a real failure lands in the errorHandler.
+        guard session.activationState == .activated else {
+            trace.add("TX dropped (session not active): \(frame.summary)")
             return
         }
         let summary = frame.summary
-        if case .voiceChunk = frame {} else { trace.add("TX \(summary)") }
+        if case .voiceChunk = frame {} else { trace.add("TX \(summary)\(session.isReachable ? "" : " (unreachable?)")") }
         session.sendMessageData(frame.encoded(), replyHandler: { [weak self] reply in
             if let f = LinkFrame.decode(reply) { DispatchQueue.main.async { self?.onFrame?(f) } }
         }, errorHandler: { [weak self] error in
@@ -92,11 +94,14 @@ public final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
 
     /// ~20 Hz: no reply handler (halves WCSession traffic), failures counted, not logged one by one.
     private func sendMotion(_ frame: LinkFrame) {
-        guard session.activationState == .activated, session.isReachable else {
+        guard session.activationState == .activated else {
             lock.withLock { motionDropped += 1 }
             return reportMotion()
         }
-        lock.withLock { motionSent += 1 }
+        lock.withLock {
+            motionSent += 1
+            if !session.isReachable { motionDropped += 1 }  // "dropped" now = sent while flagged unreachable
+        }
         session.sendMessageData(frame.encoded(), replyHandler: nil) { [weak self] _ in
             self?.lock.withLock { self?.motionFailed += 1 }
         }
@@ -108,7 +113,7 @@ public final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
             let dt = Date().timeIntervalSince(motionSince)
             guard dt >= 5 else { return nil }
             defer { motionSent = 0; motionFailed = 0; motionDropped = 0; motionSince = Date() }
-            return String(format: "TX motion %.1f Hz, fail %d, dropped %d", Double(motionSent) / dt, motionFailed, motionDropped)
+            return String(format: "TX motion %.1f Hz, fail %d, unreach %d", Double(motionSent) / dt, motionFailed, motionDropped)
         }
         if let line { trace.add(line) }
     }
