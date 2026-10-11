@@ -11,11 +11,13 @@ import SwiftUI
 final class WatchModel: ObservableObject {
     @Published private(set) var ui = WatchUI()
     @Published private(set) var recording = false
+    @Published private(set) var debugLines: [String] = []
 
     private let controller = WatchController(sessionId: "watch-\(UUID().uuidString.prefix(8))")
     private let link = WatchLink()
     private let motion = MotionStreamer()
     private let recorder = WatchClipRecorder()
+    private let keeper = RuntimeKeeper()
     private var timer: Timer?
     private var started = false
 
@@ -30,12 +32,18 @@ final class WatchModel: ObservableObject {
             guard let self else { return }
             controller.onPhoneReachable(r)
             ui = controller.ui
+            // Announce ourselves; the phone answers with the current link + status.
+            if r { apply(controller.onLifecycle(active: true)) }
+        }
+        link.trace.onChange = { [weak self] in
+            DispatchQueue.main.async { self?.debugLines = self?.link.trace.lines ?? [] }
         }
         recorder.onFinished = { [weak self] id, audio in
             guard let self else { return }
             recording = false
             apply(controller.onRecordingFinished(clipId: id, audio: audio))
         }
+        keeper.ensure()
         link.start()
         // CMDeviceMotion.timestamp is seconds since boot, same clock as systemUptime.
         motion.start { [weak self] q, gyro, gravity, t in
@@ -55,9 +63,23 @@ final class WatchModel: ObservableObject {
         _ = await WatchClipRecorder.requestPermission()
     }
 
-    func primaryAction() { run { $0.onPrimaryAction(now: $1) } }
-    func stop() { run { $0.onStop(now: $1) } }
-    func lifecycle(active: Bool) { apply(controller.onLifecycle(active: active)) }
+    func primaryAction() { runTapped { $0.onPrimaryAction(now: $1) } }
+    func stop() { runTapped { $0.onStop(now: $1) } }
+
+    /// A light click when a tap (or Double Tap) actually sent something, so you can feel it fired.
+    private func runTapped(_ body: (WatchController, TimeInterval) -> [WatchEffect]) {
+        let effects = body(controller, now)
+        if effects.contains(where: { if case .send = $0 { return true } else { return false } }) {
+            HapticPlayer.play(.click)
+        } else if effects.isEmpty {
+            link.trace.add("tap ignored: \(ui.primaryEnabled ? "request pending" : ui.primaryLabel)")
+        }
+        apply(effects)
+    }
+    func lifecycle(active: Bool) {
+        if active { keeper.ensure() }
+        apply(controller.onLifecycle(active: active))
+    }
 
     private func run(_ body: (WatchController, TimeInterval) -> [WatchEffect]) {
         apply(body(controller, now))

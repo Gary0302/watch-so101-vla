@@ -24,6 +24,10 @@
 	<string>Records a short voice command after you calibrate, so the robot knows which task to run.</string>
 	<key>WKApplication</key>
 	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>physical-therapy</string>
+	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.garyyang.so101.relay</string>
 	<key>WKRunsIndependentlyOfCompanionApp</key>

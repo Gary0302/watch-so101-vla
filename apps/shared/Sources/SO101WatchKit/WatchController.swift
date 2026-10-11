@@ -38,7 +38,7 @@ public final class WatchController {
     private var haptics = HapticScheduler()
     private var voice = VoiceSession()
     private var seq = 0
-    private var pendingRequest: (id: String, at: TimeInterval)?
+    private var pendingRequest: (id: String, epoch: Int, at: TimeInterval)?
     private var motionGate = RateGate(hz: 20)
 
     public init(sessionId: String) {
@@ -132,6 +132,12 @@ public final class WatchController {
             ui.mode = s.mode
             ui.epoch = s.controlEpoch
             ui.agentLinked = true
+            // The agent moved on (every transition bumps the epoch): the request was handled
+            // even if its ack got lost on the way.
+            if let p = pendingRequest, s.controlEpoch > p.epoch {
+                pendingRequest = nil
+                ui.pending = false
+            }
             out += voice.onStatus(mode: s.mode, epoch: s.controlEpoch).map(WatchEffect.voice)
         case .ack(let a):
             if a.requestId == pendingRequest?.id {
@@ -154,7 +160,7 @@ public final class WatchController {
     private func sendIntent(_ intent: Intent, now: TimeInterval) -> WatchEffect {
         let msg = ControlIntent(requestId: "w-\(UUID().uuidString.prefix(8))", sessionId: sessionId,
                                 controlEpoch: ui.epoch, intent: intent, source: Self.source)
-        pendingRequest = (msg.requestId, now)
+        pendingRequest = (msg.requestId, msg.controlEpoch, now)
         ui.pending = true
         ui.notice = nil
         refreshLabel()

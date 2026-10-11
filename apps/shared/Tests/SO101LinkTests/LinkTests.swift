@@ -11,6 +11,9 @@ final class LinkFrameTests: XCTestCase {
             XCTAssertEqual(LinkFrame.decode(f.encoded()), f)
         }
         XCTAssertNil(LinkFrame.decode(Data()))
+        let ack = ControlAck(requestId: "r", result: .ignored, reason: "ALREADY_HOLDING", mode: .hold, controlEpoch: 1)
+        XCTAssertEqual(LinkFrame.agent(try! ProtocolCoder.encode(ack)).summary, "ack ignored ALREADY_HOLDING e1")
+        XCTAssertEqual(LinkFrame.phoneLink(connected: false).summary, "phoneLink agent=DOWN")
         XCTAssertNil(LinkFrame.decode(Data([0x09, 1])))
     }
 }

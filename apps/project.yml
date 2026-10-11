@@ -59,6 +59,8 @@ targets:
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.garyyang.so101.relay
         WKRunsIndependentlyOfCompanionApp: false
+        WKBackgroundModes: [physical-therapy]  # RuntimeKeeper: keep streaming with the wrist down
+        WKBackgroundModes: [physical-therapy]  # RuntimeKeeper: keep streaming with the wrist down
         NSMicrophoneUsageDescription: Records a short voice command after you calibrate, so the robot knows which task to run.
     dependencies:
       - package: SO101Shared

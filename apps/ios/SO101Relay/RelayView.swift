@@ -40,6 +40,13 @@ struct RelayView: View {
                 } footer: {
                     Text("Software stop only. The physical E-stop on the robot is the real safety device.")
                 }
+                Section("Debug (newest first)") {
+                    ForEach(Array(model.debugLines.prefix(40).enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(line.contains("FAIL") || line.contains("dropped") ? .orange : .secondary)
+                    }
+                }
             }
             .navigationTitle("SO101 Relay")
         }

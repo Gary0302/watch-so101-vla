@@ -59,6 +59,8 @@ class Gateway:
         self._queue: asyncio.Queue[str] | None = None
         self._loop_task: asyncio.Task | None = None
         self.tick_errors = 0
+        self._motion_count = 0
+        self._motion_since = clock()
 
     # ------------------------------------------------------------ connection handling
 
@@ -92,12 +94,26 @@ class Gateway:
 
     def _on_raw(self, raw: str | bytes) -> None:
         try:
-            reply = self.agent.handle_message(json.loads(raw), self.clock())
+            msg = json.loads(raw)
+            self._log_in(msg)
+            reply = self.agent.handle_message(msg, self.clock())
         except (json.JSONDecodeError, UnicodeDecodeError, ProtocolError) as e:
             reply = {"protocol_version": PROTOCOL_VERSION, "type": "error", "reason": str(e)}
         if reply is not None:
+            log.info("-> %s", _brief(reply))
             self._enqueue(reply)
         self._flush()
+
+    def _log_in(self, msg: object) -> None:
+        """Every message except wrist motion, which is summarized as a rate."""
+        if isinstance(msg, dict) and msg.get("type") == "watch.motion":
+            self._motion_count += 1
+            now = self.clock()
+            if now - self._motion_since >= 5.0:
+                log.info("<- watch.motion %.1f Hz", self._motion_count / (now - self._motion_since))
+                self._motion_count, self._motion_since = 0, now
+            return
+        log.info("<- %s", _brief(msg))
 
     def _enqueue(self, msg: dict) -> None:
         q = self._queue
@@ -109,6 +125,7 @@ class Gateway:
 
     def _flush(self) -> None:
         for msg in self.agent.drain_status() + self.outbox.drain():
+            log.info("-> %s", _brief(msg))
             self._enqueue(msg)
 
     @staticmethod
@@ -147,7 +164,7 @@ class Gateway:
             process_request=self._process_request,
             max_size=MAX_MESSAGE_BYTES,
             ping_interval=1.0,
-            ping_timeout=1.0,
+            ping_timeout=3.0,  # Wi-Fi hiccups; stale wrist motion (250 ms) already holds the arm
         )
         self._loop_task = asyncio.create_task(self._control_loop())
         return server
@@ -157,6 +174,13 @@ class Gateway:
             self._loop_task.cancel()
         server.close()
         await server.wait_closed()
+
+
+def _brief(msg: object) -> str:
+    if not isinstance(msg, dict):
+        return repr(msg)[:120]
+    keys = ("type", "intent", "result", "reason", "mode", "control_epoch", "kind", "text", "request_id")
+    return " ".join(f"{k}={msg[k]}" for k in keys if k in msg)
 
 
 def _load_token(args: argparse.Namespace) -> str:

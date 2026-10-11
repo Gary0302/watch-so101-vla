@@ -93,6 +93,18 @@ final class WatchControllerTests: XCTestCase {
         XCTAssertFalse(c.ui.pending)
     }
 
+    func testNewerStatusResolvesPendingEvenIfAckIsLost() throws {
+        let c = linked()
+        _ = c.onFrame(status(.hold, epoch: 2), now: 0)
+        _ = try XCTUnwrap(sentIntent(c.onPrimaryAction(now: 1)))
+        XCTAssertTrue(c.ui.pending)
+        _ = c.onFrame(status(.hold, epoch: 2), now: 1.1)  // heartbeat replay: same epoch, still pending
+        XCTAssertTrue(c.ui.pending)
+        _ = c.onFrame(status(.calibrating, epoch: 3), now: 1.2)
+        XCTAssertFalse(c.ui.pending)
+        XCTAssertNil(c.ui.notice)
+    }
+
     func testPendingTimesOutWithNotice() {
         let c = linked()
         _ = c.onFrame(status(.hold, epoch: 2), now: 0)

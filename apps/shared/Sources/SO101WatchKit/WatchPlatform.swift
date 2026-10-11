@@ -4,6 +4,7 @@
 import CoreMotion
 import Foundation
 import SO101Link
+import SO101Protocol
 import WatchConnectivity
 import WatchKit
 
@@ -57,7 +58,12 @@ public enum HapticPlayer {
 public final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
     public var onFrame: ((LinkFrame) -> Void)?
     public var onReachable: ((Bool) -> Void)?
+    /// Link traffic for the on-screen debug panel (motion is summarized as a rate).
+    public let trace = LinkTrace()
     private let session = WCSession.default
+    private let lock = NSLock()
+    private var motionSent = 0, motionFailed = 0, motionDropped = 0
+    private var motionSince = Date()
 
     public func start() {
         session.delegate = self
@@ -68,25 +74,80 @@ public final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
 
     /// Best effort; there is no queue for later (stale wrist poses are worthless).
     public func send(_ frame: LinkFrame) {
-        guard session.activationState == .activated, session.isReachable else { return }
+        if case .agent(let d) = frame, ProtocolCoder.messageType(of: d) == WatchMotion.messageType {
+            return sendMotion(frame)
+        }
+        guard session.activationState == .activated, session.isReachable else {
+            trace.add("TX dropped (phone unreachable): \(frame.summary)")
+            return
+        }
+        let summary = frame.summary
+        if case .voiceChunk = frame {} else { trace.add("TX \(summary)") }
         session.sendMessageData(frame.encoded(), replyHandler: { [weak self] reply in
             if let f = LinkFrame.decode(reply) { DispatchQueue.main.async { self?.onFrame?(f) } }
-        }, errorHandler: nil)
+        }, errorHandler: { [weak self] error in
+            self?.trace.add("TX FAIL \(summary): \(error.localizedDescription)")
+        })
+    }
+
+    /// ~20 Hz: no reply handler (halves WCSession traffic), failures counted, not logged one by one.
+    private func sendMotion(_ frame: LinkFrame) {
+        guard session.activationState == .activated, session.isReachable else {
+            lock.withLock { motionDropped += 1 }
+            return reportMotion()
+        }
+        lock.withLock { motionSent += 1 }
+        session.sendMessageData(frame.encoded(), replyHandler: nil) { [weak self] _ in
+            self?.lock.withLock { self?.motionFailed += 1 }
+        }
+        reportMotion()
+    }
+
+    private func reportMotion() {
+        let line: String? = lock.withLock {
+            let dt = Date().timeIntervalSince(motionSince)
+            guard dt >= 5 else { return nil }
+            defer { motionSent = 0; motionFailed = 0; motionDropped = 0; motionSince = Date() }
+            return String(format: "TX motion %.1f Hz, fail %d, dropped %d", Double(motionSent) / dt, motionFailed, motionDropped)
+        }
+        if let line { trace.add(line) }
+    }
+
+    private func receive(_ f: LinkFrame) {
+        trace.add("RX \(f.summary)")
+        DispatchQueue.main.async { self.onFrame?(f) }
     }
 
     public func session(_ session: WCSession, didReceiveMessageData messageData: Data) {
-        guard let f = LinkFrame.decode(messageData) else { return }
-        DispatchQueue.main.async { self.onFrame?(f) }
+        guard let f = LinkFrame.decode(messageData) else { return trace.add("RX bad frame") }
+        receive(f)
+    }
+
+    /// Latest link + status from the phone, delivered even when we were not reachable.
+    public func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        applyContext(applicationContext, source: "context")
+    }
+
+    private func applyContext(_ ctx: [String: Any], source: String) {
+        guard let connected = ctx["agentConnected"] as? Bool else { return }
+        trace.add("RX \(source): agent \(connected ? "up" : "DOWN")")
+        DispatchQueue.main.async {
+            self.onFrame?(.phoneLink(connected: connected))
+            if connected, let status = ctx["status"] as? Data { self.onFrame?(.agent(status)) }
+        }
     }
 
     public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                         error: Error?) {
         let r = session.isReachable
+        trace.add("WC activated=\(activationState == .activated) reachable=\(r)\(error.map { " err \($0.localizedDescription)" } ?? "")")
+        applyContext(session.receivedApplicationContext, source: "saved context")
         DispatchQueue.main.async { self.onReachable?(r) }
     }
 
     public func sessionReachabilityDidChange(_ session: WCSession) {
         let r = session.isReachable
+        trace.add("phone \(r ? "reachable" : "UNREACHABLE")")
         DispatchQueue.main.async { self.onReachable?(r) }
     }
 }

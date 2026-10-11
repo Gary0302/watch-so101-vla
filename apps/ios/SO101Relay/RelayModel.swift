@@ -22,6 +22,7 @@ final class RelayModel: ObservableObject {
     @Published private(set) var lastHaptic: String?
     @Published private(set) var notice: String?
     @Published private(set) var running = false
+    @Published private(set) var debugLines: [String] = []
 
     private var relay: PhoneRelay?
     private let sessionId = "phone-\(UUID().uuidString.prefix(8))"
@@ -46,6 +47,10 @@ final class RelayModel: ObservableObject {
         relay.onWatchReachable = { [weak self] r in Task { @MainActor in self?.watchReachable = r } }
         relay.onTranscript = { [weak self] t in Task { @MainActor in self?.lastTranscript = t.text ?? "(no speech)" } }
         agent.onMessage = { [weak self] msg in Task { @MainActor in self?.apply(msg) } }
+        relay.trace.onChange = { [weak self, weak relay] in
+            let lines = relay?.trace.lines ?? []
+            Task { @MainActor in self?.debugLines = lines }
+        }
         self.relay = relay
         relay.start()
         running = true
