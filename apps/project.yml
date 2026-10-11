@@ -34,7 +34,11 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSSpeechRecognitionUsageDescription: Transcribes the voice command you record on Apple Watch so the robot can check it against the task list.
         NSLocalNetworkUsageDescription: Connects to the robot agent on your local network.
+        # ATS rejects a self-signed cert on a public IP (the aup agent) even when our pin matches
+        # (NSURLErrorDomain -1200), and NSExceptionDomains can't name an IP. AgentConnection pins
+        # the leaf SHA-256 itself, so lifting ATS doesn't lift verification.
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
     dependencies:
       - target: SO101Watch
