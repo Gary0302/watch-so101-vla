@@ -32,6 +32,11 @@ final class WorkoutKeeper: NSObject, HKWorkoutSessionDelegate {
                 return trace.add("workout FAIL auth: \(error.localizedDescription)")
             }
         }
+        let status = store.authorizationStatus(for: HKObjectType.workoutType())
+        guard status == .sharingAuthorized else {
+            authorized = false  // ask again next time we're in the foreground
+            return trace.add("workout FAIL: permission \(status == .notDetermined ? "not asked/cancelled" : "denied") — Settings › Health › SO101")
+        }
         if let s = session, s.state == .running { return }  // started while we awaited the prompt
         let config = HKWorkoutConfiguration()
         config.activityType = .other

@@ -26,6 +26,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.garyyang.so101.relay
         TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: ios/SO101Relay/SO101Relay.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: ios/SO101Relay/Info.plist
       properties:
@@ -34,6 +39,8 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSSpeechRecognitionUsageDescription: Transcribes the voice command you record on Apple Watch so the robot can check it against the task list.
         NSLocalNetworkUsageDescription: Connects to the robot agent on your local network.
+        NSHealthShareUsageDescription: Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. No health data is read.
+        NSHealthUpdateUsageDescription: Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. The workout is not saved.
         # ATS rejects a self-signed cert on a public IP (the aup agent) even when our pin matches
         # (NSURLErrorDomain -1200), and NSExceptionDomains can't name an IP. AgentConnection pins
         # the leaf SHA-256 itself, so lifting ATS doesn't lift verification.

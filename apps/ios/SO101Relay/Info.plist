@@ -22,9 +22,15 @@
 	<string>1</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. No health data is read.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Lets the SO101 watch app run a workout session so it keeps streaming your wrist motion while the screen is dimmed. The workout is not saved.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connects to the robot agent on your local network.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
