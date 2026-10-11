@@ -37,6 +37,7 @@ public final class AgentConnection: NSObject, @unchecked Sendable {
     }
 
     public var onState: ((State) -> Void)?
+    public var onError: ((String) -> Void)?
     public var onMessage: ((FromAgent) -> Void)?
     public var onIntentOutcome: ((IntentTracker.Outcome) -> Void)?
     /// Raw agent JSON, for relaying status/haptics to the Watch unchanged.
@@ -153,7 +154,8 @@ public final class AgentConnection: NSObject, @unchecked Sendable {
             self.queue.async {
                 guard t === self.task else { return }
                 switch result {
-                case .failure:
+                case .failure(let error):
+                    self.report(error, response: t.response)
                     self.dropConnection()
                 case .success(let message):
                     if self.state != .connected {
@@ -211,6 +213,18 @@ public final class AgentConnection: NSObject, @unchecked Sendable {
                 if err != nil { self.dropConnection() } else { self.pumpMotion() }
             }
         }
+    }
+
+    /// Why the socket failed, for the debug trail: "connecting…" forever tells you nothing.
+    private func report(_ error: Error, response: URLResponse?) {
+        let e = error as NSError
+        var text = "\(e.domain) \(e.code): \(e.localizedDescription)"
+        if let http = response as? HTTPURLResponse { text = "HTTP \(http.statusCode) (token?) · " + text }
+        if e.code == NSURLErrorCancelled, config.pinnedCertSHA256 != nil { text += " (cert pin mismatch?)" }
+        if e.code == NSURLErrorTimedOut || e.code == NSURLErrorCannotConnectToHost {
+            text += " (Local Network permission / same Wi-Fi?)"
+        }
+        callbackQueue.async { self.onError?(text) }
     }
 
     private func dropConnection() {

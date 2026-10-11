@@ -44,6 +44,7 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
             toWatch(.agent(json))
             if isStatus { publishContext() }
         }
+        agent.onError = { [weak self] text in self?.trace.add("agent FAIL \(text)") }
         agent.onState = { [weak self] state in
             guard let self else { return }
             stateLock.withLock {
