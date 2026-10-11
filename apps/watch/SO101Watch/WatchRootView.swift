@@ -20,7 +20,9 @@ struct WatchRootView: View {
                         .font(.headline).multilineTextAlignment(.center).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!model.ui.primaryEnabled)
+                // Never .disabled: a disabled button swallows Double Tap silently. The model
+                // ignores it instead and buzzes "retry" so you can feel it registered.
+                .opacity(model.ui.primaryEnabled ? 1 : 0.45)
                 .handGestureShortcut(.primaryAction)
                 .accessibilityIdentifier("primary")
 
@@ -29,7 +31,7 @@ struct WatchRootView: View {
                 }
                 .tint(.red)
                 .accessibilityIdentifier("stop")
-                .disabled(!model.ui.phoneLinked)
+                .opacity(model.ui.phoneLinked ? 1 : 0.45)
 
                 if let n = model.ui.notice {
                     Text(n).font(.caption2).foregroundStyle(.orange).lineLimit(2)

@@ -52,6 +52,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.garyyang.so101.relay.watchkitapp
         TARGETED_DEVICE_FAMILY: "4"
+    entitlements:
+      path: watch/SO101Watch/SO101Watch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: watch/SO101Watch/Info.plist
       properties:
@@ -59,8 +64,9 @@ targets:
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.garyyang.so101.relay
         WKRunsIndependentlyOfCompanionApp: false
-        WKBackgroundModes: [physical-therapy]  # RuntimeKeeper: keep streaming with the wrist down
-        WKBackgroundModes: [physical-therapy]  # RuntimeKeeper: keep streaming with the wrist down
+        WKBackgroundModes: [workout-processing]  # WorkoutKeeper: keep streaming + reachable with the wrist down
+        NSHealthShareUsageDescription: SO101 runs a workout session only to keep streaming your wrist motion while the screen is dimmed. No health data is read.
+        NSHealthUpdateUsageDescription: SO101 runs a workout session only to keep streaming your wrist motion while the screen is dimmed. The workout is not saved.
         NSMicrophoneUsageDescription: Records a short voice command after you calibrate, so the robot knows which task to run.
     dependencies:
       - package: SO101Shared

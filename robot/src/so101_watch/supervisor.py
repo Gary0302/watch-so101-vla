@@ -41,7 +41,7 @@ class Transition:
 
 @dataclass
 class SupervisorConfig:
-    listen_timeout_s: float = 8.0  # 5 s recording window + STT margin (SPEC §5.3)
+    listen_timeout_s: float = 15.0  # 5 s recording + WCSession upload + STT; 8 s timed out on a real watch
     validate_timeout_s: float = 3.0
     calibration_timeout_s: float = 3.0
     vla_timeout_s: float = 120.0

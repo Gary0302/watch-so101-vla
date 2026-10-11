@@ -17,7 +17,7 @@ final class WatchModel: ObservableObject {
     private let link = WatchLink()
     private let motion = MotionStreamer()
     private let recorder = WatchClipRecorder()
-    private lazy var keeper = RuntimeKeeper(trace: link.trace)
+    private lazy var keeper = WorkoutKeeper(trace: link.trace)
     private var timer: Timer?
     private var started = false
     private var reportedActive = true
@@ -44,7 +44,6 @@ final class WatchModel: ObservableObject {
             recording = false
             apply(controller.onRecordingFinished(clipId: id, audio: audio))
         }
-        keeper.ensure()
         link.start()
         // CMDeviceMotion.timestamp is seconds since boot, same clock as systemUptime.
         motion.start { [weak self] q, gyro, gravity, t in
@@ -56,29 +55,34 @@ final class WatchModel: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.run { $0.tick(now: $1) } }
         }
-        // Last, so a pending permission prompt never delays the link or STOP button.
-        // If denied, recordings fail and the agent rejects the task (fails closed).
+        // Last, so pending permission prompts never delay the link or STOP button.
         #if DEBUG
         if ProcessInfo.processInfo.environment["SO101_SKIP_PERMISSION_PROMPTS"] == "1" { return }
         #endif
+        await keeper.ensure()  // HealthKit prompt the first time
+        // If denied, recordings fail and the agent rejects the task (fails closed).
         _ = await WatchClipRecorder.requestPermission()
     }
 
     func primaryAction() { runTapped { $0.onPrimaryAction(now: $1) } }
     func stop() { runTapped { $0.onStop(now: $1) } }
 
-    /// A light click when a tap (or Double Tap) actually sent something, so you can feel it fired.
+    /// Every tap / Double Tap vibrates, so you always know it registered:
+    /// click = acted on it, retry (double buzz) = ignored (reason in the debug trail).
     private func runTapped(_ body: (WatchController, TimeInterval) -> [WatchEffect]) {
+        let before = controller.ui
         let effects = body(controller, now)
-        if effects.contains(where: { if case .send = $0 { return true } else { return false } }) {
+        if effects.isEmpty {
+            HapticPlayer.play(.retry)
+            link.trace.add("tap IGNORED: \(before.pending ? "waiting for previous reply" : before.primaryLabel)")
+        } else {
             HapticPlayer.play(.click)
-        } else if effects.isEmpty {
-            link.trace.add("tap ignored: \(ui.primaryEnabled ? "request pending" : ui.primaryLabel)")
         }
         apply(effects)
     }
     func lifecycle(active: Bool, foreground: Bool) {
-        if foreground { keeper.ensure() }  // a runtime session can only start from the foreground
+        if foreground, started { Task { await keeper.ensure() } }  // sessions start from the foreground only
+        if !active { keeper.stop() }  // left the app: no reason to keep a workout running
         link.trace.add("app \(foreground ? "foreground" : active ? "dimmed (Always On)" : "BACKGROUND")")
         guard active != reportedActive else { return }
         reportedActive = active

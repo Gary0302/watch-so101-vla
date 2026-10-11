@@ -20,13 +20,17 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>SO101 runs a workout session only to keep streaming your wrist motion while the screen is dimmed. No health data is read.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>SO101 runs a workout session only to keep streaming your wrist motion while the screen is dimmed. The workout is not saved.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Records a short voice command after you calibrate, so the robot knows which task to run.</string>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKBackgroundModes</key>
 	<array>
-		<string>physical-therapy</string>
+		<string>workout-processing</string>
 	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.garyyang.so101.relay</string>

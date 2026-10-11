@@ -139,9 +139,13 @@ def test_tc08_interrupt_drops_old_chunk_and_late_replies():
 def test_tc09_watch_link_loss_holds_the_arm(h: Harness):
     h.take_manual()
     h.run(0.5, q=tilt(pitch_deg=30.0))
-    h.run(0.5, watch=False)  # Watch/Phone silent past the 250 ms watchdog
-    assert h.mode is Mode.HOLD
+    h.run(0.3, watch=False)  # silent past motion_stale_ms (250 ms): frozen, still MANUAL
+    assert h.mode is Mode.MANUAL
     frozen = dict(h.target)
+    h.run(0.5, watch=False)
+    assert h.target == frozen
+    h.run(1.0, watch=False)  # past motion_lost_ms (1.5 s): give up MANUAL
+    assert h.mode is Mode.HOLD
     h.run(1.0, watch=False)
     assert h.target == frozen
     assert any(e.kind is HapticKind.CONNECTION_LOST for e in h.sink.events)
@@ -151,7 +155,7 @@ def test_tc09_watch_link_loss_also_stops_vla():
     h = Harness(ScriptedPolicy([[{"shoulder_pan": float(i)} for i in range(100)]]))
     h.start_vla()
     h.run(0.2)
-    h.run(0.5, watch=False)
+    h.run(2.0, watch=False)
     assert h.mode is Mode.AWAIT_RECALIBRATION
     assert any(t.reason == "watch_link_lost" for t in h.agent.sup.history)
 
@@ -202,3 +206,15 @@ def test_tc12_watch_leaving_foreground_disables_manual(h: Harness):
     h.run(0.6)
     assert h.mode is Mode.HOLD
     assert h.sink.played(HapticKind.CALIBRATION_FAILED)
+
+
+def test_brief_link_stall_freezes_then_resumes_manual(h: Harness):
+    """A real-watch WCSession stall (~0.5 s) must not throw the user out of MANUAL."""
+    h.take_manual()
+    h.run(0.5, q=tilt(pitch_deg=30.0))
+    h.run(0.5, watch=False)
+    assert h.mode is Mode.MANUAL
+    frozen = dict(h.target)
+    h.run(0.5, q=tilt(pitch_deg=30.0))  # link back: still MANUAL, moving again
+    assert h.mode is Mode.MANUAL
+    assert h.target != frozen

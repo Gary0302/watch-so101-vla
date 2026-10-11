@@ -38,7 +38,10 @@ _REQUIRED_CAMERAS = ("front", "wrist")
 @dataclass
 class AgentConfig:
     control_hz: float = 30.0
-    motion_stale_ms: float = 250.0
+    motion_stale_ms: float = 250.0   # wrist pose this old: freeze in place (no motion proposed)
+    motion_lost_ms: float = 1500.0   # this old: give up MANUAL / stop the VLA. WCSession on a real
+                                     # watch stalls 300-600 ms now and then; dropping out of MANUAL
+                                     # (and recalibrating) on every stall made it unusable.
     require_both_cameras: bool = True
     gripper_hold_squeeze: float = 2.0  # how far past the grasp point the target may sit
     supervisor: SupervisorConfig = field(default_factory=SupervisorConfig)
@@ -232,11 +235,15 @@ class RobotAgent:
         if mode is Mode.VLA_CANCELLING:
             self.sup.on_hold_confirmed(now)
 
+    def _motion_age_ms(self, now: float) -> float:
+        return float("inf") if self._motion_rx is None else (now - self._motion_rx) * 1000.0
+
     def _motion_fresh(self, now: float) -> bool:
-        return self._motion_rx is not None and (now - self._motion_rx) * 1000.0 <= self.cfg.motion_stale_ms
+        return self._motion_age_ms(now) <= self.cfg.motion_stale_ms
 
     def _check_watchdogs(self, now: float) -> None:
-        if self._motion_fresh(now):
+        # Between stale and lost, MANUAL proposes nothing (see _propose): the arm holds still.
+        if self._motion_age_ms(now) <= self.cfg.motion_lost_ms:
             return
         if self.sup.mode is Mode.MANUAL:
             self.haptics.one_shot(HapticKind.CONNECTION_LOST, now, self.sup.epoch)
@@ -267,8 +274,8 @@ class RobotAgent:
         epoch = self.sup.epoch
         if self.sup.mode is Mode.MANUAL:
             m = self._motion
-            if m is None or self._q0 is None or m.control_epoch != epoch:
-                return None
+            if m is None or self._q0 is None or m.control_epoch != epoch or not self._motion_fresh(now):
+                return None  # hold still; a stale pose must never keep driving a velocity
             v = self.mapper.velocity(self._q0, m.quaternion_wxyz, dt)
             return Proposal(Owner.MANUAL, epoch, self.kinematics.integrate(v, self.safety.target, dt))
 
