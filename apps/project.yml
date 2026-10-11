@@ -1,0 +1,93 @@
+# XcodeGen spec:  cd apps && xcodegen generate
+# Set DEVELOPMENT_TEAM (or pick a team in Xcode) on the Mac mini before running on devices.
+name: SO101
+options:
+  bundleIdPrefix: com.garyyang.so101
+  deploymentTarget:
+    iOS: "18.0"
+    watchOS: "11.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  SO101Shared:
+    path: shared
+targets:
+  SO101Relay:
+    type: application
+    platform: iOS
+    sources: [ios/SO101Relay]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.garyyang.so101.relay
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: ios/SO101Relay/Info.plist
+      properties:
+        CFBundleDisplayName: SO101 Relay
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSSpeechRecognitionUsageDescription: Transcribes the voice command you record on Apple Watch so the robot can check it against the task list.
+        NSLocalNetworkUsageDescription: Connects to the robot agent on your local network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    dependencies:
+      - target: SO101Watch
+      - package: SO101Shared
+        product: SO101Protocol
+      - package: SO101Shared
+        product: SO101Voice
+      - package: SO101Shared
+        product: SO101Link
+  SO101Watch:
+    type: application
+    platform: watchOS
+    sources: [watch/SO101Watch]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.garyyang.so101.relay.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+    info:
+      path: watch/SO101Watch/Info.plist
+      properties:
+        CFBundleDisplayName: SO101
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.garyyang.so101.relay
+        WKRunsIndependentlyOfCompanionApp: false
+        NSMicrophoneUsageDescription: Records a short voice command after you calibrate, so the robot knows which task to run.
+    dependencies:
+      - package: SO101Shared
+        product: SO101Protocol
+      - package: SO101Shared
+        product: SO101Voice
+      - package: SO101Shared
+        product: SO101Link
+      - package: SO101Shared
+        product: SO101WatchKit
+  SO101WatchUITests:
+    type: bundle.ui-testing
+    platform: watchOS
+    sources: [watch/SO101WatchUITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.garyyang.so101.watchuitests
+        TEST_TARGET_NAME: SO101Watch
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: SO101Watch
+schemes:
+  SO101Watch:
+    build:
+      targets:
+        SO101Watch: all
+    test:
+      targets: [SO101WatchUITests]
+  SO101Relay:
+    build:
+      targets:
+        SO101Relay: all

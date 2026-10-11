@@ -24,6 +24,8 @@ public struct WatchUI: Equatable, Sendable {
     public var pending = false
     public var notice: String?
     public var lastHaptic: String?
+
+    public init() {}
 }
 
 public final class WatchController {

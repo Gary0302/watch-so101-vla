@@ -13,6 +13,9 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
     private let transcripts: TranscriptRelay
     private let session: WCSession
     private let queue = DispatchQueue(label: "so101.phone-relay")
+    private let stateLock = NSLock()
+    private var agentConnected = false
+    private var lastStatus: Data?  // replayed when the watch (re)appears, so it never shows a stale mode
 
     public var onTranscript: ((VoiceTranscript) -> Void)?
     public var onWatchReachable: ((Bool) -> Void)?
@@ -23,10 +26,21 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
         self.transcripts = TranscriptRelay(sessionId: agent.config.sessionId, transcriber: transcriber)
         self.session = session
         super.init()
-        agent.onRawMessage = { [weak self] json in self?.toWatch(.agent(json)) }
+        agent.onRawMessage = { [weak self] json in
+            guard let self else { return }
+            if ProtocolCoder.messageType(of: json) == RobotStatus.messageType {
+                stateLock.withLock { self.lastStatus = json }
+            }
+            toWatch(.agent(json))
+        }
         agent.onState = { [weak self] state in
-            self?.toWatch(.phoneLink(connected: state == .connected))
-            self?.onAgentState?(state)
+            guard let self else { return }
+            stateLock.withLock {
+                self.agentConnected = state == .connected
+                if !self.agentConnected { self.lastStatus = nil }
+            }
+            toWatch(.phoneLink(connected: state == .connected))
+            onAgentState?(state)
         }
     }
 
@@ -39,6 +53,19 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
 
     public func stop() {
         agent.stop()
+    }
+
+    /// Link state + latest status, for a watch that just became reachable.
+    private func resyncWatch() {
+        let (connected, status) = stateLock.withLock { (agentConnected, lastStatus) }
+        toWatch(.phoneLink(connected: connected))
+        if connected, let status { toWatch(.agent(status)) }
+    }
+
+    private func reportReachability(_ session: WCSession) {
+        let reachable = session.isReachable
+        if reachable { resyncWatch() }
+        DispatchQueue.main.async { self.onWatchReachable?(reachable) }
     }
 
     private func toWatch(_ frame: LinkFrame) {
@@ -80,11 +107,12 @@ public final class PhoneRelay: NSObject, WCSessionDelegate, @unchecked Sendable 
     }
 
     public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
-                        error: Error?) {}
+                        error: Error?) {
+        reportReachability(session)
+    }
 
     public func sessionReachabilityDidChange(_ session: WCSession) {
-        let reachable = session.isReachable
-        DispatchQueue.main.async { self.onWatchReachable?(reachable) }
+        reportReachability(session)
     }
 
     public func sessionDidBecomeInactive(_ session: WCSession) {}
