@@ -1,0 +1,11 @@
+{
+  "control_epoch": 15,
+  "mode": "AWAIT_RECALIBRATION",
+  "owner": "NONE",
+  "protocol_version": 1,
+  "reason": "VLA_FINISHED",
+  "robot_holding": true,
+  "session_id": "s-1021",
+  "type": "robot.status",
+  "vla_task_id": "pick_red_cube_into_box"
+}

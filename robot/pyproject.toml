@@ -3,7 +3,9 @@ name = "so101-watch"
 version = "0.1.0"
 description = "Local Robot Agent for Apple Watch x SO-101 x VLA (see docs/SPEC.md)"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "websockets>=17.2",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]

@@ -8,3 +8,5 @@ policies/checkpoints/
 .DS_Store
 xcuserdata/
 DerivedData/
+runs/
+.build/

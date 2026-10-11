@@ -1,0 +1,9 @@
+{
+  "control_epoch": 14,
+  "intent": "DOUBLE_TAP",
+  "protocol_version": 1,
+  "request_id": "c-5394",
+  "session_id": "s-1021",
+  "source": "watch-primary-action",
+  "type": "control.intent"
+}

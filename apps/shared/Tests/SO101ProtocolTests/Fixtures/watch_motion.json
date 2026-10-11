@@ -1,0 +1,24 @@
+{
+  "control_epoch": 14,
+  "gravity_g": [
+    0.03,
+    -0.04,
+    -0.998
+  ],
+  "gyro_rad_s": [
+    0.02,
+    0.01,
+    -0.03
+  ],
+  "protocol_version": 1,
+  "quaternion_wxyz": [
+    0.99,
+    0.01,
+    -0.12,
+    0.04
+  ],
+  "sample_mono_ns": 18391239123,
+  "seq": 912,
+  "session_id": "s-1021",
+  "type": "watch.motion"
+}

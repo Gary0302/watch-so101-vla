@@ -1,0 +1,9 @@
+{
+  "control_epoch": 14,
+  "mode": "MANUAL",
+  "protocol_version": 1,
+  "reason": "STALE_EPOCH",
+  "request_id": "c-5394",
+  "result": "rejected",
+  "type": "control.ack"
+}

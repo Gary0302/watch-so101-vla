@@ -109,6 +109,26 @@ class RobotAgent:
     def physical_estop(self, now: float) -> None:
         self.sup.on_estop(now)
 
+    def client_disconnected(self, now: float) -> None:
+        """Phone link dropped: forget the last wrist sample so nothing keeps steering.
+
+        MANUAL goes to HOLD now; a running VLA is stopped by the watchdog on the next tick.
+        """
+        self._motion, self._motion_rx = None, None
+        self.sup.on_manual_lost("client_disconnected", now)
+
+    def status(self) -> dict:
+        s = self.sup
+        return to_dict(RobotStatus(
+            session_id=self.session_id, control_epoch=s.epoch, mode=s.mode, owner=s.owner,
+            reason="snapshot", robot_holding=s.mode not in (Mode.MANUAL, Mode.VLA_RUNNING),
+            vla_task_id=s.task_id,
+        ))
+
+    def drain_status(self) -> list[dict]:
+        out, self.status_out = self.status_out, []
+        return out
+
     # ------------------------------------------------------------ inbound
 
     def handle_message(self, raw: dict, now: float) -> dict | None:

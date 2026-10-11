@@ -1,0 +1,18 @@
+{
+  "axis": "shoulder_pan",
+  "confidence": 1.0,
+  "control_epoch": 14,
+  "created_mono_ns": 18391239999,
+  "display": "Joint limit reached",
+  "event_id": "evt-10315",
+  "evidence": [],
+  "kind": "LIMIT_HIT",
+  "limit_type": "soft_joint",
+  "play_haptic": true,
+  "protocol_version": 1,
+  "session_id": "s-1021",
+  "severity": "warning",
+  "transaction_id": null,
+  "ttl_ms": 500,
+  "type": "robot.haptic_event"
+}

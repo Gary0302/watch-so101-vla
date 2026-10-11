@@ -1,0 +1,5 @@
+{
+  "protocol_version": 1,
+  "reason": "unknown message type 'x'",
+  "type": "error"
+}

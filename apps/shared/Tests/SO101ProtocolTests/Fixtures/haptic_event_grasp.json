@@ -1,0 +1,21 @@
+{
+  "axis": null,
+  "confidence": 0.8,
+  "control_epoch": 14,
+  "created_mono_ns": 18391240000,
+  "display": "Grasp likely",
+  "event_id": "evt-10316",
+  "evidence": [
+    "position_stall",
+    "current_delta"
+  ],
+  "kind": "GRASP_LIKELY",
+  "limit_type": null,
+  "play_haptic": false,
+  "protocol_version": 1,
+  "session_id": "s-1021",
+  "severity": "info",
+  "transaction_id": 3,
+  "ttl_ms": 500,
+  "type": "robot.haptic_event"
+}
