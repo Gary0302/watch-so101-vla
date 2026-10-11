@@ -6,6 +6,7 @@ aup is shared and the SO-101 is shared with a friend, so every probe calls
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 
@@ -32,6 +33,10 @@ def holders(path: str) -> list[str]:
 
 
 def assert_free(path: str) -> None:
+    # tools/aup_probe.sh checks on the HOST (lsof + running containers) before starting the
+    # container; inside the container host processes are invisible anyway.
+    if os.environ.get("SO101_DEVICE_CHECKED_ON_HOST") == "1":
+        return
     held = holders(path)
     if held:
         raise DeviceBusy(f"{path} is in use by: {', '.join(held)}. Not touching it; coordinate first.")
