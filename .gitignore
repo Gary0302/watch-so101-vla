@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+policies/checkpoints/
+*.safetensors
+*.pt
+.DS_Store
+xcuserdata/
+DerivedData/
