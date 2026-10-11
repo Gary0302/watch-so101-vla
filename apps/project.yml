@@ -1,5 +1,5 @@
 # XcodeGen spec:  cd apps && xcodegen generate
-# Set DEVELOPMENT_TEAM (or pick a team in Xcode) on the Mac mini before running on devices.
+# DEVELOPMENT_TEAM: Fu-Chun Yang (Individual). Edit here, not in Xcode; xcodegen overwrites the project.
 name: SO101
 options:
   bundleIdPrefix: com.garyyang.so101
@@ -10,7 +10,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 98527N34D6
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
