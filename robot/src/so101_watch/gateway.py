@@ -179,7 +179,7 @@ class Gateway:
 def _brief(msg: object) -> str:
     if not isinstance(msg, dict):
         return repr(msg)[:120]
-    keys = ("type", "intent", "result", "reason", "mode", "control_epoch", "kind", "text", "request_id")
+    keys = ("type", "intent", "state", "result", "reason", "mode", "control_epoch", "kind", "text", "request_id")
     return " ".join(f"{k}={msg[k]}" for k in keys if k in msg)
 
 

@@ -20,6 +20,7 @@ final class WatchModel: ObservableObject {
     private lazy var keeper = RuntimeKeeper(trace: link.trace)
     private var timer: Timer?
     private var started = false
+    private var reportedActive = true
 
     private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
@@ -76,8 +77,11 @@ final class WatchModel: ObservableObject {
         }
         apply(effects)
     }
-    func lifecycle(active: Bool) {
-        if active { keeper.ensure() }
+    func lifecycle(active: Bool, foreground: Bool) {
+        if foreground { keeper.ensure() }  // a runtime session can only start from the foreground
+        link.trace.add("app \(foreground ? "foreground" : active ? "dimmed (Always On)" : "BACKGROUND")")
+        guard active != reportedActive else { return }
+        reportedActive = active
         apply(controller.onLifecycle(active: active))
     }
 
